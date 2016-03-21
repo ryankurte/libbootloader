@@ -17,7 +17,6 @@ enum loader_packet_e {
   LOADER_PACKET_CONTROL,
   LOADER_PACKET_DATA_REQ,
   LOADER_PACKET_DATA_RESP,
-  
 };
 
 enum loader_result_e {
