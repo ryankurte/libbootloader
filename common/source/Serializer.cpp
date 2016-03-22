@@ -11,17 +11,21 @@
 namespace Freyja
 {
 
-int Serializer::CreateProgrammerRequest(uint32_t type, uint32_t serial, uint8_t* data, uint8_t max_length)
+int Serializer::CreateProgrammerRequest(uint32_t type, uint32_t serial, uint32_t max_data, Version* v, uint8_t* data, uint8_t max_length)
 {
-	int length;
+    int length;
 
-	pb_ostream_t ostream = pb_ostream_from_buffer(data, max_length);
+    pb_ostream_t ostream = pb_ostream_from_buffer(data, max_length);
 
-	Serializer::CreateBase(&ostream, FreyjaMessage_Type_PROG_REQ);
+    if (!Serializer::CreateBase(&ostream, FreyjaMessage_Type_PROG_REQ)) {
+        return -1;
+    }
 
-	Serializer::WriteProgrammerRequest(&ostream, type, serial);
+    if (!Serializer::WriteProgrammerRequest(&ostream, type, serial, max_data, v)) {
+        return -2;
+    }
 
-	return ostream.bytes_written;
+    return ostream.bytes_written;
 }
 
 
@@ -34,9 +38,8 @@ bool Serializer::CreateBase(pb_ostream_t *ostream, FreyjaMessage_Type type)
     return pb_encode(ostream, FreyjaMessage_fields, &message);
 }
 
-bool Serializer::AddSubfield(pb_ostream_t *ostream, const pb_field_t messagetype[], const void *message)
+bool Serializer::AddSubmessage(pb_ostream_t *ostream, const pb_field_t messagetype[], const void *message)
 {
-
     const pb_field_t *field;
     for (field = FreyjaMessage_fields; field->tag != 0; field++) {
         if (field->ptr == messagetype) {
@@ -45,7 +48,7 @@ bool Serializer::AddSubfield(pb_ostream_t *ostream, const pb_field_t messagetype
                 return false;
             }
 
-            return pb_encode_submessage(ostream, messagetype, &message);
+            return pb_encode_submessage(ostream, messagetype, message);
         }
     }
 
@@ -53,30 +56,31 @@ bool Serializer::AddSubfield(pb_ostream_t *ostream, const pb_field_t messagetype
 }
 
 
-bool Serializer::WriteProgrammerRequest(pb_ostream_t *ostream, uint32_t type, uint32_t serial)
+bool Serializer::WriteProgrammerRequest(pb_ostream_t *ostream, uint32_t type, uint32_t serial, uint32_t max_size, Version *v)
 {
-	ProgrammerRequest pr = ProgrammerRequest_init_zero;
+    ProgrammerRequest pr = ProgrammerRequest_init_zero;
+
     pr.serial = serial;
     pr.type = type;
+    pr.max_size = max_size;
 
-    return Serializer::AddSubfield(ostream, ProgrammerRequest_fields, &pr);
+    if (v != NULL) {
+        pr.has_appVersion = true;
+        Serializer::AddAppVersion(&(pr.appVersion), v);
+    }
+
+    return Serializer::AddSubmessage(ostream, ProgrammerRequest_fields, &pr);
 }
 
-bool Serializer::WriteAppVersion(pb_ostream_t *ostream, Version* v)
+void Serializer::AddAppVersion(AppVersion* av, Version* v)
 {
-	AppVersion av = AppVersion_init_zero;
-    AppVersion vm = AppVersion_init_zero;
+    av->major = v->GetMajor();
+    av->minor = v->GetMinor();
+    av->patch = v->GetPatch();
 
-    vm.major = v->GetMajor();
-    vm.minor = v->GetMinor();
-    vm.patch = v->GetPatch();
-
-    size_t version_len = std::min(sizeof(AppVersion_description_t) - 1 , strlen(v->GetDescription()));
-
-    strncpy((char*)vm.description.bytes, v->GetDescription(), version_len);
-    vm.description.size = version_len;
-
-    return Serializer::AddSubfield(ostream, AppVersion_fields, &vm);
+    size_t description_len = std::min(sizeof(AppVersion_description_t) - 1 , strlen(v->GetDescription()));
+    strncpy((char*)av->description.bytes, v->GetDescription(), description_len);
+    av->description.size = description_len;
 }
 
 };

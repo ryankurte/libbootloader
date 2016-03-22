@@ -25,11 +25,11 @@ message ProgrammerRequest {
 
 // Response from a programmer to a device
 message ProgrammerResponse {
-  optional bool canProgram = 1;
+  required bool canProgram = 1;
 
   // Compusory application information
-  required uint32 size = 2;
-  required uint32 crc = 3;
+  optional uint32 size = 2;
+  optional uint32 crc = 3;
 
   // Optional application version information
   optional AppVersion appVersion = 4;
