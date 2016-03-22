@@ -1,0 +1,71 @@
+// A very simple protocol definition, consisting of only
+// one message.
+
+syntax = "proto2";
+
+import "nanopb.proto";
+
+message AppVersion {
+  required uint32 major = 1;   
+  required uint32 minor = 2;
+  required uint32 patch = 3;
+  required bytes description = 4 [(nanopb).max_size = 20];
+}
+
+// Request from a device to a programmer
+message ProgrammerRequest {
+	// Device type information is required
+	required uint32 serial = 1;
+  required uint32 type = 2;
+  required uint32 max_size = 3;
+
+  // Current application version is optional
+  optional AppVersion appVersion = 4;
+}
+
+// Response from a programmer to a device
+message ProgrammerResponse {
+  optional bool canProgram = 1;
+
+  // Compusory application information
+  required uint32 size = 2;
+  required uint32 crc = 3;
+
+  // Optional application version information
+  optional AppVersion appVersion = 4;
+}
+
+// Request for application
+message DataRequest {
+	required uint32 offset = 1;		//!< Offset in bytes
+	required uint32 size = 2;		  //!< size of requested data
+}
+
+// Application data response
+message DataResponse {
+	required uint32 offset = 1;		                      //!< Offset in bytes
+	required uint32 size = 2;		                        //!< Size of response data
+
+	required bytes data = 3 [(nanopb).max_size = 32];		//!< App data
+}
+
+message ProgrammerResult {
+  enum Result {SUCCESS = 0; SIZE_ERROR = 1; CRC_ERROR = 2; UNKNOWN_ERROR=3; }
+  required Result result = 1;
+}
+
+message FreyjaMessage {
+  enum Type { PROG_REQ = 1; PROG_RESP = 2; DATA_REQ =3; DATA_RESP = 4; PROG_RES = 5; }
+
+  // Identifies which field is filled in.
+  required Type type = 1;
+  optional uint32 session = 2;
+
+  // One of the following will be filled in.
+  optional ProgrammerRequest programmerRequest = 3;
+  optional ProgrammerResponse programmerResponse = 4;
+  optional DataRequest dataRequest = 5;
+  optional DataResponse dataResponse = 6;
+  optional ProgrammerResult programmerResult = 7;
+
+}
